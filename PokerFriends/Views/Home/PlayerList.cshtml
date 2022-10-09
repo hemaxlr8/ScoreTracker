@@ -1,0 +1,74 @@
+﻿@model PokerFriends.Models.PlayerListModel
+@{
+    ViewData["Title"] = "Player List";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card text-center border-dark">
+            <div class="card-header">
+                Player Names (In-order of sitting)
+            </div>
+            <div class="card-body">
+                <form>
+                    @for (int i = 0; i < Model.PlayerCount; i++)
+                    {
+                        <div class="form-group row">
+                            <label for="player-@i" class="col-sm-2 col-form-label">@(i+1) .</label>
+                            <div class="col-sm-6">
+                                <input type="text" class="form-control" id="player-@i" placeholder="Player-@(i+1)">
+                                <span hidden class="text-danger float-left" id="validatePlayer-@i">Enter a Player Name</span>
+                            </div>
+                        </div>
+                    }
+                </form>
+                <span hidden class="text-danger" id="uniquePlayersValidate">Players must have unique names</span>
+            </div>
+            <div class="card-footer text-muted">
+                <button type="button" onclick="validateAndSubmit()" class="btn btn-primary">Next</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- #region submission forms-->
+<form action="/Home/Scoreboard" method="post" id="frmScoreboard" name="frmScoreboard">
+    <input type="hidden" name="players" id="players" value="" />
+    <input type="hidden" name="buyInAmount" id="players" value="@Model.BuyInAmount" />
+</form>
+<!-- #endregion -->
+
+<script>
+    //validate player names on submit
+    function validateAndSubmit() {
+        var error = false;
+        var players = [@Model.PlayerCount];
+        for (var i = 0; i < @Model.PlayerCount; i++) {
+            if ($('#player-' + i).val() == "") {
+                $('#validatePlayer-' + i).removeAttr("hidden");
+                error = true;
+            }
+            else {
+                players[i] = $('#player-' + i).val();
+                $('#validatePlayer-' + i).attr("hidden", true);
+            }
+        }
+        const uniquePlayers = Array.from(new Set(players));
+
+        if (players.length === uniquePlayers.length) {
+            $('#uniquePlayersValidate').attr("hidden", true);
+        } else {
+            $('#uniquePlayersValidate').removeAttr("hidden");
+            error = true;
+        }
+        if (error) {
+            return false;
+        }
+        else {
+            $('#players').val(players);
+            $('#frmScoreboard').submit();
+        }
+
+        
+    }
+</script>

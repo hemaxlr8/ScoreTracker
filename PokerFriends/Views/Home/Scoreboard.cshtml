@@ -1,0 +1,286 @@
+﻿@model PokerFriends.Models.ScoreboardModel
+@{
+    ViewBag.Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Scoreboard";
+    int playerId = 0;
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card text-center border-dark mb-5">
+            <div class="card-header">
+                <div class="row">
+                    <div class="col">
+                        <span class="float-left">$@Model.BuyInAmount Buy-In's</span>
+                    </div>
+                    <div class="col">
+                        Player Names (In-order of sitting)
+                    </div>
+                    <div class="col">
+                        <button type="button" data-toggle="modal" data-target="#addPlayerModal" class="btn btn-secondary">Add Player</button>
+                        <button type="button" data-toggle="modal" data-target="#resetScoreboardModal" class="btn btn-secondary float-right">Reset</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <table class="table" id="tblScoreboard">
+                    <thead>
+                        <tr>
+                            <th scope="col">Player</th>
+                            <th scope="col">Buy-In's</th>
+                            <th scope="col">Total $</th>
+                            <th scope="col">Remaining $</th>
+                            <th scope="col">Gain/Loss</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var player in Model.Players)
+                        {
+                            <tr>
+                                <td id="playerName-@playerId">@player</td>
+                                <td>
+                                    <div class="col-sm-6 text-center" style="display: inline-flex">
+                                        <input type="number" class="form-control text-center" id="buyIns-@playerId" onchange="calculateTotal(@playerId)">
+                                    </div>
+                                </td>
+                                <td>
+                                    <p id="totalAmount-@playerId"></p>
+                                </td>
+                                <td>
+                                    <div class="col-sm-6 text-center" style="display: inline-flex">
+                                        <input type="number" class="form-control text-center" id="remainingAmount-@playerId" onchange="calculateGainOrLoss(@playerId)">
+                                        <span hidden class="text-danger" id="remainingAmountValidate-@playerId">Enter remaining $</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <p id="gainOrLoss-@playerId"></p>
+                                </td>
+                            </tr>
+                            playerId++;
+                        }
+                    </tbody>
+                </table>
+                <span hidden class="text-danger" id="totalsMismatch">Total remaining amount does not match with total borrowed</span>
+            </div>
+            <div class="card-footer text-muted">
+                <button type="button" onclick="simplifyDebts()" class="btn btn-primary">Calculate Debts</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card text-center border-dark">
+            <div class="card-header">
+                Simplified Transactions
+            </div>
+            <div class="card-body">
+                <table hidden id="tblSimplifiedDebts" class="table">
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!--#region Modals-->
+<div class="modal fade" id="addPlayerModal" tabindex="-1" role="dialog" aria-labelledby="addPlayerModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addPlayerModalLabel">Add new player</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="form-group row">
+                        <div class="col-sm-6">
+                            <input type="text" class="form-control" name="newPlayer" id="newPlayer" value="" placeholder="Name" />
+                            <span hidden class="text-danger" id="newPlayerValidate">Enter player name</span>
+                            <span hidden class="text-danger" id="newPlayerValidateUniqueName">Player name already exists</span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-sm-6">
+                            <label for="playerPositionSelect">Player is sitting next to</label>
+                            <select class="form-control" id="playersDropdownSelect">
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="addPlayer()">Add</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="resetScoreboardModal" tabindex="-1" role="dialog" aria-labelledby="resetScoreboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resetScoreboardModalLabel">Scoreboard will be reset with current players</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to continue?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="reset()">Reset</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!--#endregion-->
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $('#addPlayerModal').on('show.bs.modal', function (e) {
+            var $dropdown = $("#playersDropdownSelect");
+            $dropdown.find('option').remove().end()
+            var table = document.getElementById("tblScoreboard");
+            var playerCount = table.tBodies[0].rows.length;
+            for (var i = 0; i < playerCount; i++) {
+                var playerName = $('#playerName-' + i).text();
+                $dropdown.append($("<option />").val(playerName).text(playerName));
+            }
+        })
+    });
+    
+    function addPlayer() {
+        var selectedPlayer = $('#playersDropdownSelect').find(":selected").text();
+        var table = document.getElementById("tblScoreboard");
+        var currentPlayerCount = table.tBodies[0].rows.length;
+        var newPlayer = $('#newPlayer').val();
+        if (newPlayer == "") {
+            $('#newPlayerValidate').removeAttr("hidden");
+            return false;
+        }
+        
+        // check for duplicates
+        for (var i = 0; i < currentPlayerCount; i++) {
+            if ($('#playerName-' + i).text() == newPlayer) {
+                $('#newPlayerValidateUniqueName').removeAttr("hidden");
+                error = true;
+                return false;
+            }
+            else {
+                $('#newPlayerValidateUniqueName').attr("hidden", true);
+            }
+        }
+
+        // read each table row. 
+        // if playerName == selectedPlayer, insert new playerName at this position with other values as null
+        // else continue
+        // for remaining rows increment id by 1
+
+        $('#newPlayerValidate').attr("hidden", true);
+        var newPlayerId = currentPlayerCount;
+        var newRow = "<tr>"
+            + `<td id = "playerName-${newPlayerId}">${newPlayer}</td>`
+            + `<td>
+                <div class="col-sm-6 text-center" style="display: inline-flex">
+                    <input type="number" class="form-control text-center" id="buyIns-${newPlayerId}" onchange="calculateTotal(${newPlayerId})">
+                </div>
+            </td>`
+            + `<td>
+                <p id="totalAmount-${newPlayerId}"></p>
+            </td>`
+            + `<td>
+                <div class="col-sm-6 text-center" style="display: inline-flex">
+                    <input type="number" class="form-control text-center" id="remainingAmount-${newPlayerId}" onchange="calculateGainOrLoss(${newPlayerId})">
+                    <span hidden class="text-danger" id="remainingAmountValidate-${newPlayerId}">Enter remaining $</span>
+                </div>
+            </td>`
+            + `<td>
+                <p id="gainOrLoss-${newPlayerId}"></p>
+            </td>`
+            + "</tr>";
+        $('#tblScoreboard tbody').append(newRow);
+        $('#addPlayerModal').modal('hide');
+    }
+
+    function reset() {
+        var table = document.getElementById("tblScoreboard");
+        var playerCount = table.tBodies[0].rows.length;
+        for (var i = 0; i < playerCount; i++) {
+            $('#buyIns-' + i).val(null);
+            $('#totalAmount-' + i).text("");
+            $('#remainingAmount-' + i).val(null);
+            $('#gainOrLoss-' + i).text("");
+        }
+        $('#tblSimplifiedDebts tbody').empty();
+        $('#resetScoreboardModal').modal('hide');
+    }
+
+    function calculateTotal(playerId) {
+        var totalAmount = @Model.BuyInAmount * $('#buyIns-' + playerId).val();
+        $('#totalAmount-' + playerId).text(totalAmount);
+    }
+
+    function calculateGainOrLoss(playerId) {
+        var remainingAmount = $('#remainingAmount-' + playerId).val();
+        var totalAmount = @Model.BuyInAmount * $('#buyIns-' + playerId).val();
+        var gainorLoss = remainingAmount - totalAmount;
+        $('#gainOrLoss-' + playerId).text(gainorLoss);
+    }
+
+    function simplifyDebts() {
+        // verify totals match
+        var table = document.getElementById("tblScoreboard");
+        var playerCount = table.tBodies[0].rows.length;
+        var totalBorrowed = 0;
+        var totalRemaining = 0;
+        for (var i = 0; i < playerCount; i++) {
+            totalBorrowed += parseFloat($('#totalAmount-' + i).text());
+            totalRemaining += parseFloat($('#remainingAmount-' + i).val());
+        }
+        if (totalBorrowed != totalRemaining) {
+            $('#totalsMismatch').removeAttr("hidden");
+            return false;
+        }
+        else {
+            $('#totalsMismatch').attr("hidden", true);
+
+        var players = [playerCount];
+        var gains = [playerCount];
+        for (var i = 0; i < playerCount; i++) {
+            players[i] = $('#playerName-' + i).text();
+            gains[i] = $('#gainOrLoss-' + i).text();
+        }
+        var postData = { players: players, gains: gains };
+        $('#tblSimplifiedDebts').removeAttr("hidden");
+        $("#tblSimplifiedDebts tbody tr").remove();
+            $.ajax({
+                type: "POST",
+                url: "/Home/SimplifyDebts",
+                data: postData,
+                success: function (data) {
+                    $.each(data, function (i, item) {
+                        var rows = "<tr>"
+                            + "<td>" + item + "</td>"
+                            + "</tr>";
+                        $('#tblSimplifiedDebts tbody').append(rows);
+                    });
+                },
+                failure: function (data) {
+                    var rows = "<tr>"
+                        + "<td class='text-danger'> Simplified Debts calculation error</td>"
+                        + "</tr>";
+                    $('#tblSimplifiedDebts tbody').append(rows);
+                },
+                dataType: "json",
+                traditional: true
+            });
+        }
+
+    }
+</script>
